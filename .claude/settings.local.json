@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php check_db.php:*)",
+      "Bash(php test_db.php:*)",
+      "Bash(curl:*)",
+      "Bash(php -S:*)",
+      "Bash(php:*)",
+      "Bash(composer --version:*)",
+      "Bash(unzip:*)",
+      "Bash(dir \"C:\\\\Users\\\\danis\\\\retec\\\\api\")",
+      "Bash(dir \"C:\\\\Users\\\\danis\\\\retec\\\\lib\")"
+    ]
+  }
+}

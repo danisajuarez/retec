@@ -1,0 +1,17 @@
+# Proteger archivos sensibles
+<FilesMatch "^config\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Prevenir listado de directorios
+Options -Indexes
+
+# Charset UTF-8
+AddDefaultCharset UTF-8
+
+# PHP configuraciones
+<IfModule mod_php.c>
+    php_flag display_errors off
+    php_flag log_errors on
+</IfModule>
