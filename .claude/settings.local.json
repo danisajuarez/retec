@@ -9,7 +9,14 @@
       "Bash(composer --version:*)",
       "Bash(unzip:*)",
       "Bash(dir \"C:\\\\Users\\\\danis\\\\retec\\\\api\")",
-      "Bash(dir \"C:\\\\Users\\\\danis\\\\retec\\\\lib\")"
+      "Bash(dir \"C:\\\\Users\\\\danis\\\\retec\\\\lib\")",
+      "Bash(ls:*)",
+      "Bash(tesseract:*)",
+      "Bash(\"C:/Program Files/gs/gs10.05.0/bin/gswin64c.exe\" --version)",
+      "Bash(powershell -Command \"Compress-Archive -Path ''api/ocr.php'',''api/ocr_google.php'',''api/ocr_ocrspace.php'',''api/ocr_tesseract.php'',''index_ocr.php'',''ocr_test.php'',''test_ocr.php'',''test_ocr_debug.php'',''test_tesseract.php'',''test_items.php'',''Factura_A_0003_00155708_page-0001.jpg'' -DestinationPath ''ocr_backup.zip'' -Force\")",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
