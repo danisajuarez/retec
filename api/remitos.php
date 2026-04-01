@@ -13,12 +13,11 @@ $clienteId = getClienteId();
 $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
 $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
 $length = isset($_POST['length']) ? (int)$_POST['length'] : 25;
-$tipo = isset($_POST['tipo']) ? trim($_POST['tipo']) : '';
 $fechaDesde = isset($_POST['fecha_desde']) ? trim($_POST['fecha_desde']) : '';
 $fechaHasta = isset($_POST['fecha_hasta']) ? trim($_POST['fecha_hasta']) : '';
 
 // Cache key
-$cacheKey = "remitos_{$clienteId}_{$start}_{$length}_{$tipo}_{$fechaDesde}_{$fechaHasta}";
+$cacheKey = "remitos_{$clienteId}_{$start}_{$length}_{$fechaDesde}_{$fechaHasta}";
 
 // Verificar cache (5 minutos)
 if (isset($_SESSION[$cacheKey]) && isset($_SESSION[$cacheKey . '_time'])) {
@@ -53,12 +52,6 @@ try {
     ";
 
     $params = [$clienteId];
-
-    // Filtro por tipo
-    if ($tipo !== '') {
-        $sql .= " AND ert.ERT_TipoErt = ?";
-        $params[] = $tipo;
-    }
 
     // Filtro por fecha desde
     if ($fechaDesde !== '') {

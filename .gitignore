@@ -1,0 +1,11 @@
+# Archivos de Windows
+NUL
+
+# Archivos de backup
+*.zip
+
+# Imágenes de facturas
+Factura_*.jpg
+
+# Configuración local de Claude
+.claude/settings.local.json

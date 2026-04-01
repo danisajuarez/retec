@@ -121,6 +121,24 @@ $qrData = [
 $qrBase64 = base64_encode(json_encode($qrData));
 $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
 
+// Configuración de paginación - todas las páginas tienen header y footer completo
+$ITEMS_POR_PAGINA = 16; // Ítems por página (igual en todas las páginas)
+
+// Dividir detalles en páginas
+$totalItems = count($detalles);
+$paginas = [];
+
+if ($totalItems <= $ITEMS_POR_PAGINA) {
+    $paginas[] = $detalles;
+} else {
+    $restantes = $detalles;
+    while (count($restantes) > 0) {
+        $paginas[] = array_slice($restantes, 0, $ITEMS_POR_PAGINA);
+        $restantes = array_slice($restantes, $ITEMS_POR_PAGINA);
+    }
+}
+
+$totalPaginas = count($paginas);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -133,13 +151,17 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
         body { font-family: Arial, sans-serif; font-size: 11px; background: #f0f0f0; }
         .page {
             width: 210mm;
-            height: 297mm;
-            margin: 0 auto;
+            min-height: 297mm;
+            margin: 20px auto;
             background: #fff;
             padding: 5mm;
+            page-break-after: always;
+        }
+        .page:last-of-type {
+            page-break-after: avoid;
         }
         .factura {
-            height: 100%;
+            min-height: calc(297mm - 10mm);
             position: relative;
             border: 1px solid #000;
             padding: 0;
@@ -256,6 +278,7 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
             vertical-align: top;
         }
         .detalle td.r { text-align: right; }
+        .detalle td.codigo { white-space: nowrap; font-size: 8px; }
 
         /* === ARCA BAR === */
         .arca-bar {
@@ -378,6 +401,39 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
         .proveedor-right { width: 55%; }
         .prov-label { font-weight: bold; }
 
+        /* Header continuación para páginas 2+ */
+        .header-cont {
+            width: 100%;
+            border-bottom: 1px solid #000;
+            padding: 10px 15px;
+            font-size: 10px;
+        }
+        .header-cont-left { float: left; }
+        .header-cont-right { float: right; text-align: right; }
+        .header-cont::after { content: ""; display: table; clear: both; }
+
+        /* Número de página estilo libro */
+        .page-number {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+        }
+
+        /* Mensaje de continúa */
+        .continua {
+            text-align: center;
+            padding: 10px;
+            font-size: 9px;
+            font-style: italic;
+            color: #666;
+            border-top: 1px dashed #ccc;
+            margin-top: 10px;
+        }
+
         /* === PRINT === */
         @media print {
             @page {
@@ -386,10 +442,11 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
             }
             html, body {
                 width: 210mm;
-                height: 297mm;
+                height: auto;
                 margin: 0;
                 padding: 0;
                 background: #fff;
+                overflow: hidden;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
@@ -397,12 +454,20 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
             .page {
                 width: 210mm;
                 height: 297mm;
+                max-height: 297mm;
                 margin: 0;
                 padding: 5mm;
+                page-break-after: always;
+                page-break-inside: avoid;
+                overflow: hidden;
+            }
+            .page:last-of-type {
                 page-break-after: avoid;
             }
             .factura {
                 height: calc(297mm - 10mm);
+                max-height: calc(297mm - 10mm);
+                overflow: hidden;
             }
             .arca-bar {
                 background: #555 !important;
@@ -460,12 +525,15 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
     </div>
     <div id="toast" class="toast no-print">Link copiado al portapapeles</div>
 
+    <?php for ($paginaActual = 0; $paginaActual < $totalPaginas; $paginaActual++):
+        $itemsPagina = $paginas[$paginaActual];
+    ?>
     <div class="page">
         <div class="factura">
-            <!-- HEADER -->
+            <!-- HEADER COMPLETO en todas las páginas -->
             <div class="header">
                 <div class="header-left">
-                        <img src="logo.png" class="logo-img">
+                    <img src="logo.png" class="logo-img">
                 </div>
                 <div class="header-center">
                     <div class="letra"><?= htmlspecialchars($factura['EFC_ClaseComEfc']) ?></div>
@@ -516,9 +584,9 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($detalles as $det): ?>
+                        <?php foreach ($itemsPagina as $det): ?>
                         <tr>
-                            <td style="font-size: 8px;"><?= htmlspecialchars($det['ART_IDArticulo']) ?></td>
+                            <td class="codigo"><?= htmlspecialchars($det['ART_IDArticulo']) ?></td>
                             <td class="r"><?= intval($det['DFC_CantArt']) ?></td>
                             <td><?= htmlspecialchars(toUtf8($det['ART_DesArticulo'])) ?></td>
                             <td class="r"><?= formatMoney($det['Unitario']) ?></td>
@@ -532,13 +600,13 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
                 </table>
             </div>
 
-            <!-- ARCA BAR -->
+            <!-- ARCA BAR - en todas las páginas -->
             <div class="arca-bar">
                 <span>ARCA</span> <em>Comprobante Autorizado</em>
             </div>
 
-            <!-- FOOTER -->
-          <div class="footer-section">
+            <!-- FOOTER - en todas las páginas -->
+            <div class="footer-section">
                 <div class="footer">
                     <div class="footer-col col-importes">
                         <div class="totales-row">
@@ -587,6 +655,7 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
                         <div class="cae-info" style="font-size: 8px; margin-top: 10px; text-align: right;">
                             <b>CAE:</b> <?= htmlspecialchars($factura['EFC_CAE']) ?><br>
                             <b>Vto. CAE:</b> <?= $factura['EFC_CAEVto'] ? date('d/m/Y', strtotime($factura['EFC_CAEVto'])) : '-' ?>
+                            <?php if ($totalPaginas > 1): ?><br>Página <?= $paginaActual + 1 ?> de <?= $totalPaginas ?><?php endif; ?>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -607,13 +676,9 @@ $qrUrl = "https://www.afip.gob.ar/fe/qr/?p=" . $qrBase64;
                     </div>
                 </div>
             </div>
-
-            <!-- PROVEEDOR - ABAJO DE TODO -->
-          
-                </div>
-            </div>
         </div>
     </div>
+    <?php endfor; ?>
 
     <script>
     function copiarLink() {

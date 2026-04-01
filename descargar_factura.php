@@ -136,6 +136,25 @@ foreach ($desgloseIva as $iva) {
 // Comprobante proveedor
 $comprobante = !empty($factura['ClaseCompra']) ? $factura['ClaseCompra'] . ' ' . str_pad($factura['PuestoCompra'] ?? '', 4, '0', STR_PAD_LEFT) . ' ' . str_pad($factura['NumeroCompra'] ?? '', 8, '0', STR_PAD_LEFT) : '';
 
+// Configuración de paginación - todas las páginas tienen header y footer completo
+$ITEMS_POR_PAGINA = 16; // Ítems por página (igual en todas las páginas)
+
+// Dividir detalles en páginas
+$totalItems = count($detalles);
+$paginas = [];
+
+if ($totalItems <= $ITEMS_POR_PAGINA) {
+    $paginas[] = $detalles;
+} else {
+    $restantes = $detalles;
+    while (count($restantes) > 0) {
+        $paginas[] = array_slice($restantes, 0, $ITEMS_POR_PAGINA);
+        $restantes = array_slice($restantes, $ITEMS_POR_PAGINA);
+    }
+}
+
+$totalPaginas = count($paginas);
+
 $html = '<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -145,8 +164,9 @@ $html = '<!DOCTYPE html>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; font-size: 11px; }
 
-        .page { width: 200mm; height: 287mm; position: relative; margin: 5mm auto 0 auto; }
-        .factura { height: 100%; position: relative; border: 1px solid #000; padding: 0; margin: 0 auto; }
+        .page { width: 200mm; height: 287mm; position: relative; margin: 0 auto; }
+        .page-break { page-break-before: always; }
+        .factura { height: 287mm; position: relative; border: 1px solid #000; }
 
         /* HEADER */
         .header { width: 100%; border-bottom: 1px solid #000; }
@@ -176,6 +196,7 @@ $html = '<!DOCTYPE html>
         .detalle th.r { text-align: right; }
         .detalle td { padding: 6px 5px; font-size: 10px; vertical-align: top; }
         .detalle td.r { text-align: right; }
+        .detalle td.codigo { white-space: nowrap; font-size: 8px; }
 
         /* ARCA BAR */
         .arca-bar {
@@ -228,16 +249,59 @@ $html = '<!DOCTYPE html>
             font-size: 8px;
         }
         .prov-label { font-weight: bold; }
+
+        /* Header continuación para páginas 2+ */
+        .header-cont {
+            width: 100%;
+            border-bottom: 1px solid #000;
+            padding: 10px 15px;
+            font-size: 10px;
+        }
+        .header-cont-left { float: left; }
+        .header-cont-right { float: right; text-align: right; }
+        .header-cont::after { content: ""; display: table; clear: both; }
+
+        /* Número de página estilo libro */
+        .page-number {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+        }
+
+        /* Mensaje de continúa */
+        .continua {
+            text-align: center;
+            padding: 10px;
+            font-size: 9px;
+            font-style: italic;
+            color: #666;
+            border-top: 1px dashed #ccc;
+            margin-top: 10px;
+        }
     </style>
 </head>
-<body>
-    <div class="page">
-        <div class="factura">
-            <!-- HEADER -->
+<body>';
+
+$logoBase64 = base64_encode(file_get_contents(__DIR__ . '/logo.png'));
+
+// Generar cada página
+for ($paginaActual = 0; $paginaActual < $totalPaginas; $paginaActual++) {
+    $itemsPagina = $paginas[$paginaActual];
+    $pageBreakClass = ($paginaActual > 0) ? ' page-break' : '';
+
+    $html .= '<div class="page' . $pageBreakClass . '"><div class="factura">';
+
+    // Header completo en TODAS las páginas
+    $html .= '
+            <!-- HEADER COMPLETO -->
             <table class="header" cellspacing="0" cellpadding="0">
                 <tr>
                     <td class="header-left">
-                        <img src="data:image/png;base64,' . base64_encode(file_get_contents(__DIR__ . '/logo.png')) . '" class="logo-img">
+                        <img src="data:image/png;base64,' . $logoBase64 . '" class="logo-img">
                     </td>
                     <td class="header-center">
                         <div class="letra">' . htmlspecialchars($factura['EFC_ClaseComEfc']) . '</div>
@@ -273,8 +337,10 @@ $html = '<!DOCTYPE html>
                         <div class="cliente-row"><span class="cliente-label">C.U.I.T.:</span> ' . htmlspecialchars($factura['TER_CUITTer'] ?? '') . '</div>
                     </td>
                 </tr>
-            </table>
+            </table>';
 
+    // Detalle de ítems
+    $html .= '
             <!-- DETALLE -->
             <table class="detalle" cellspacing="0" cellpadding="0">
                 <thead>
@@ -291,10 +357,10 @@ $html = '<!DOCTYPE html>
                 </thead>
                 <tbody>';
 
-foreach ($detalles as $det) {
-    $html .= '
+    foreach ($itemsPagina as $det) {
+        $html .= '
                     <tr>
-                        <td style="font-size: 8px;">' . htmlspecialchars($det['ART_IDArticulo']) . '</td>
+                        <td class="codigo">' . htmlspecialchars($det['ART_IDArticulo']) . '</td>
                         <td class="r">' . intval($det['DFC_CantArt']) . '</td>
                         <td>' . htmlspecialchars(toUtf8($det['ART_DesArticulo'])) . '</td>
                         <td class="r">' . formatMoney($det['Unitario']) . '</td>
@@ -303,12 +369,14 @@ foreach ($detalles as $det) {
                         <td class="r">' . formatMoney($det['DFC_ImpImpuIntArt'] ?? 0) . '</td>
                         <td class="r">' . formatMoney($det['DFC_ImpTotRen']) . '</td>
                     </tr>';
-}
+    }
 
-$html .= '
+    $html .= '
                 </tbody>
-            </table>
+            </table>';
 
+    // Footer completo en TODAS las páginas
+    $html .= '
             <!-- ARCA BAR -->
             <div class="arca-bar">
                 <span>ARCA</span> <em>Comprobante Autorizado</em>
@@ -340,26 +408,27 @@ $html .= '
                         <!-- Columna 3: QR -->
                         <td class="col-qr">';
 
-if (!empty($factura['EFC_CAE'])) {
-    $html .= '<img src="' . $qrImageUrl . '" class="qr-code">';
-}
+    if (!empty($factura['EFC_CAE'])) {
+        $html .= '<img src="' . $qrImageUrl . '" class="qr-code">';
+    }
 
-$html .= '
+    $html .= '
                         </td>
 
                         <!-- Columna 4: Total + CAE -->
                         <td class="col-total">
                             <span class="total-label">TOTAL:</span> <span class="total-value">' . formatMoney($factura['EFC_ImpTotalEfc']) . '</span>';
 
-if (!empty($factura['EFC_CAE'])) {
-    $html .= '
+    if (!empty($factura['EFC_CAE'])) {
+        $html .= '
                             <div class="cae-info">
                                 <b>CAE:</b> ' . htmlspecialchars($factura['EFC_CAE']) . '<br>
-                                <b>Vto. CAE:</b> ' . ($factura['EFC_CAEVto'] ? date('d/m/Y', strtotime($factura['EFC_CAEVto'])) : '-') . '
+                                <b>Vto. CAE:</b> ' . ($factura['EFC_CAEVto'] ? date('d/m/Y', strtotime($factura['EFC_CAEVto'])) : '-') .
+                                ($totalPaginas > 1 ? '<br>Página ' . ($paginaActual + 1) . ' de ' . $totalPaginas : '') . '
                             </div>';
-}
+    }
 
-$html .= '
+    $html .= '
                         </td>
                     </tr>
                 </table>
@@ -381,11 +450,13 @@ $html .= '
                         </td>
                     </tr>
                 </table>
-            </div>
-        </div>
-    </div>
-</body>
-</html>';
+            </div>';
+
+    $html .= '</div>'; // cierra .factura
+    $html .= '</div>'; // cierra .page
+}
+
+$html .= '</body></html>';
 
 $options = new Options();
 $options->set('isRemoteEnabled', true);

@@ -95,6 +95,25 @@ if (!empty($remito['factura_numero'])) {
     }
 }
 
+// Configuración de paginación - todas las páginas tienen header y footer completo
+$ITEMS_POR_PAGINA = 18; // Ítems por página (igual en todas las páginas)
+
+// Dividir detalles en páginas
+$totalItems = count($detalles);
+$paginas = [];
+
+if ($totalItems <= $ITEMS_POR_PAGINA) {
+    $paginas[] = $detalles;
+} else {
+    $restantes = $detalles;
+    while (count($restantes) > 0) {
+        $paginas[] = array_slice($restantes, 0, $ITEMS_POR_PAGINA);
+        $restantes = array_slice($restantes, $ITEMS_POR_PAGINA);
+    }
+}
+
+$totalPaginas = count($paginas);
+
 $html = '<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -104,8 +123,9 @@ $html = '<!DOCTYPE html>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; font-size: 11px; }
 
-        .page { width: 200mm; height: 287mm; position: relative; margin: 5mm auto 0 auto; }
-        .remito { height: 100%; position: relative; border: 1px solid #000; padding: 0; margin: 0 auto; }
+        .page { width: 200mm; height: 287mm; position: relative; margin: 0 auto; }
+        .page-break { page-break-before: always; }
+        .remito { height: 287mm; position: relative; border: 1px solid #000; }
 
         /* HEADER */
         .header { width: 100%; border-bottom: 1px solid #000; }
@@ -145,16 +165,59 @@ $html = '<!DOCTYPE html>
         .totales-label { font-weight: bold; }
         .total-label { font-size: 28px; font-weight: bold; }
         .total-value { font-size: 28px; font-weight: bold; color: #000; }
+
+        /* Header continuación para páginas 2+ */
+        .header-cont {
+            width: 100%;
+            border-bottom: 1px solid #000;
+            padding: 10px 15px;
+            font-size: 10px;
+        }
+        .header-cont-left { float: left; }
+        .header-cont-right { float: right; text-align: right; }
+        .header-cont::after { content: ""; display: table; clear: both; }
+
+        /* Número de página */
+        .page-number {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+        }
+
+        /* Mensaje de continúa */
+        .continua {
+            text-align: center;
+            padding: 10px;
+            font-size: 9px;
+            font-style: italic;
+            color: #666;
+            border-top: 1px dashed #ccc;
+            margin-top: 10px;
+        }
     </style>
 </head>
-<body>
-    <div class="page">
-        <div class="remito">
-            <!-- HEADER -->
+<body>';
+
+$logoBase64 = base64_encode(file_get_contents(__DIR__ . '/logo.png'));
+
+// Generar cada página
+for ($paginaActual = 0; $paginaActual < $totalPaginas; $paginaActual++) {
+    $itemsPagina = $paginas[$paginaActual];
+    $pageBreakClass = ($paginaActual > 0) ? ' page-break' : '';
+
+    $html .= '<div class="page' . $pageBreakClass . '"><div class="remito">';
+
+    // Header completo en TODAS las páginas
+    $html .= '
+            <!-- HEADER COMPLETO -->
             <table class="header" cellspacing="0" cellpadding="0">
                 <tr>
                     <td class="header-left">
-                        <img src="data:image/png;base64,' . base64_encode(file_get_contents(__DIR__ . '/logo.png')) . '" class="logo-img">
+                        <img src="data:image/png;base64,' . $logoBase64 . '" class="logo-img">
                     </td>
                     <td class="header-center">
                         <div class="letra">' . htmlspecialchars($remito['ERT_ClaseComErt']) . '</div>
@@ -190,8 +253,10 @@ $html = '<!DOCTYPE html>
                         <div class="cliente-row"><span class="cliente-label">C.U.I.T.:</span> ' . htmlspecialchars($remito['TER_CUITTer'] ?? '') . '</div>
                     </td>
                 </tr>
-            </table>
+            </table>';
 
+    // Detalle de ítems
+    $html .= '
             <!-- DETALLE -->
             <table class="detalle" cellspacing="0" cellpadding="0">
                 <thead>
@@ -205,8 +270,8 @@ $html = '<!DOCTYPE html>
                 </thead>
                 <tbody>';
 
-foreach ($detalles as $det) {
-    $html .= '
+    foreach ($itemsPagina as $det) {
+        $html .= '
                     <tr>
                         <td style="font-size: 9px;">' . htmlspecialchars($det['ART_IDArticulo']) . '</td>
                         <td class="r">' . number_format(floatval($det['DRT_CantArt']), 2, ',', '.') . '</td>
@@ -214,12 +279,14 @@ foreach ($detalles as $det) {
                         <td class="r">' . formatMoney($det['Unitario'] ?? 0) . '</td>
                         <td class="r">' . formatMoney($det['DRT_ImpTotRen']) . '</td>
                     </tr>';
-}
+    }
 
-$html .= '
+    $html .= '
                 </tbody>
-            </table>
+            </table>';
 
+    // Footer completo en TODAS las páginas
+    $html .= '
             <!-- FOOTER -->
             <div class="footer-section">
                 <table class="footer-table" cellspacing="0" cellpadding="0">
@@ -232,14 +299,16 @@ $html .= '
                         </td>
                         <td class="col-total">
                             <span class="total-label">TOTAL:</span> <span class="total-value">' . formatMoney($remito['ERT_ImpTotalErt']) . '</span>
+                            ' . ($totalPaginas > 1 ? '<div style="font-size: 8px; margin-top: 10px; text-align: right;">Página ' . ($paginaActual + 1) . ' de ' . $totalPaginas . '</div>' : '') . '
                         </td>
                     </tr>
                 </table>
-            </div>
-        </div>
-    </div>
-</body>
-</html>';
+            </div>';
+
+    $html .= '</div></div>';
+}
+
+$html .= '</body></html>';
 
 $options = new Options();
 $options->set('isRemoteEnabled', true);

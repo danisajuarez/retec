@@ -25,22 +25,6 @@ if (isset($_GET['refresh'])) {
 
 $clienteId = getClienteId();
 
-// Tipos de comprobante - usar cache de sesión
-if (!isset($_SESSION['tipos_comp_cache'])) {
-    $pdo = getConnection();
-    $stmtTipos = $pdo->query("
-        SELECT TCP_IDTipoComp as id, TCP_DesTipoComp as nombre
-        FROM sige_tcp_tipocomp
-        ORDER BY TCP_IDTipoComp
-    ");
-    $tipos = $stmtTipos->fetchAll();
-    foreach ($tipos as &$t) {
-        $t['nombre'] = mb_convert_encoding($t['nombre'] ?? '', 'UTF-8', 'ISO-8859-1');
-    }
-    $_SESSION['tipos_comp_cache'] = $tipos;
-}
-$tiposComp = $_SESSION['tipos_comp_cache'];
-
 function toUtf8($str) {
     return mb_convert_encoding($str ?? '', 'UTF-8', 'ISO-8859-1');
 }
@@ -316,12 +300,6 @@ function toUtf8($str) {
                         <label class="form-label mb-0 small text-muted">Hasta:</label>
                         <input type="date" id="fechaHasta" class="form-control form-control-sm" style="width: 140px;">
                     </div>
-                    <select id="filtroTipo" class="form-select form-select-sm w-auto">
-                        <option value="">Todos los tipos</option>
-                        <?php foreach ($tiposComp as $tipo): ?>
-                            <option value="<?= $tipo['id'] ?>"><?= htmlspecialchars($tipo['nombre']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
                     <button type="button" id="btnLimpiar" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-x-circle"></i> Limpiar
                     </button>
@@ -378,13 +356,7 @@ function toUtf8($str) {
             cargarRemitos();
 
             // Filtros
-            document.getElementById('filtroTipo').addEventListener('change', function() {
-                currentPage = 0;
-                cargarRemitos();
-            });
-
             document.getElementById('btnLimpiar').addEventListener('click', function() {
-                document.getElementById('filtroTipo').value = '';
                 document.getElementById('fechaDesde').value = '';
                 document.getElementById('fechaHasta').value = '';
                 currentPage = 0;
@@ -433,7 +405,6 @@ function toUtf8($str) {
                 draw: 1,
                 start: currentPage * pageSize,
                 length: pageSize,
-                tipo: document.getElementById('filtroTipo').value,
                 fecha_desde: document.getElementById('fechaDesde').value,
                 fecha_hasta: document.getElementById('fechaHasta').value
             });

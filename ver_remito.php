@@ -89,6 +89,24 @@ if (!empty($remito['factura_numero'])) {
         $facturaAsociada .= ' (' . $facFecha . ')';
     }
 }
+// Configuración de paginación - todas las páginas tienen header y footer completo
+$ITEMS_POR_PAGINA = 18; // Ítems por página (igual en todas las páginas)
+
+// Dividir detalles en páginas
+$totalItems = count($detalles);
+$paginas = [];
+
+if ($totalItems <= $ITEMS_POR_PAGINA) {
+    $paginas[] = $detalles;
+} else {
+    $restantes = $detalles;
+    while (count($restantes) > 0) {
+        $paginas[] = array_slice($restantes, 0, $ITEMS_POR_PAGINA);
+        $restantes = array_slice($restantes, $ITEMS_POR_PAGINA);
+    }
+}
+
+$totalPaginas = count($paginas);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -101,13 +119,17 @@ if (!empty($remito['factura_numero'])) {
         body { font-family: Arial, sans-serif; font-size: 11px; background: #f0f0f0; }
         .page {
             width: 210mm;
-            height: 297mm;
-            margin: 0 auto;
+            min-height: 297mm;
+            margin: 20px auto;
             background: #fff;
             padding: 5mm;
+            page-break-after: always;
+        }
+        .page:last-of-type {
+            page-break-after: avoid;
         }
         .remito {
-            height: 100%;
+            min-height: calc(297mm - 10mm);
             position: relative;
             border: 1px solid #000;
             padding: 0;
@@ -264,6 +286,39 @@ if (!empty($remito['factura_numero'])) {
         .total-label { font-size: 28px; font-weight: bold; }
         .total-value { font-size: 28px; font-weight: bold; color: #000; }
 
+        /* Header continuación para páginas 2+ */
+        .header-cont {
+            width: 100%;
+            border-bottom: 1px solid #000;
+            padding: 10px 15px;
+            font-size: 10px;
+        }
+        .header-cont-left { float: left; }
+        .header-cont-right { float: right; text-align: right; }
+        .header-cont::after { content: ""; display: table; clear: both; }
+
+        /* Número de página */
+        .page-number {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+        }
+
+        /* Mensaje de continúa */
+        .continua {
+            text-align: center;
+            padding: 10px;
+            font-size: 9px;
+            font-style: italic;
+            color: #666;
+            border-top: 1px dashed #ccc;
+            margin-top: 10px;
+        }
+
         /* === PRINT === */
         @media print {
             @page {
@@ -272,20 +327,29 @@ if (!empty($remito['factura_numero'])) {
             }
             html, body {
                 width: 210mm;
-                height: 297mm;
+                height: auto;
                 margin: 0;
                 padding: 0;
                 background: #fff;
+                overflow: hidden;
             }
             .page {
                 width: 210mm;
                 height: 297mm;
+                max-height: 297mm;
                 margin: 0;
                 padding: 5mm;
+                page-break-after: always;
+                page-break-inside: avoid;
+                overflow: hidden;
+            }
+            .page:last-of-type {
                 page-break-after: avoid;
             }
             .remito {
                 height: calc(297mm - 10mm);
+                max-height: calc(297mm - 10mm);
+                overflow: hidden;
             }
             .no-print { display: none !important; }
         }
@@ -321,9 +385,12 @@ if (!empty($remito['factura_numero'])) {
         <a href="<?= htmlspecialchars($linkDescarga) ?>" class="btn btn-download" target="_blank">Descargar PDF</a>
     </div>
 
+    <?php for ($paginaActual = 0; $paginaActual < $totalPaginas; $paginaActual++):
+        $itemsPagina = $paginas[$paginaActual];
+    ?>
     <div class="page">
         <div class="remito">
-            <!-- HEADER -->
+            <!-- HEADER COMPLETO en todas las páginas -->
             <div class="header">
                 <div class="header-left">
                     <img src="logo.png" class="logo-img">
@@ -376,7 +443,7 @@ if (!empty($remito['factura_numero'])) {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($detalles as $det): ?>
+                        <?php foreach ($itemsPagina as $det): ?>
                         <tr>
                             <td style="font-size: 9px;"><?= htmlspecialchars($det['ART_IDArticulo']) ?></td>
                             <td class="r"><?= number_format(floatval($det['DRT_CantArt']), 2, ',', '.') ?></td>
@@ -389,7 +456,7 @@ if (!empty($remito['factura_numero'])) {
                 </table>
             </div>
 
-            <!-- FOOTER -->
+            <!-- FOOTER - en todas las páginas -->
             <div class="footer-section">
                 <div class="footer">
                     <div class="footer-col col-importes">
@@ -405,10 +472,14 @@ if (!empty($remito['factura_numero'])) {
                     <div class="footer-col col-total">
                         <span class="total-label">TOTAL:</span>
                         <span class="total-value"><?= formatMoney($remito['ERT_ImpTotalErt']) ?></span>
+                        <?php if ($totalPaginas > 1): ?>
+                        <div style="font-size: 8px; margin-top: 10px; text-align: right;">Página <?= $paginaActual + 1 ?> de <?= $totalPaginas ?></div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <?php endfor; ?>
 </body>
 </html>
